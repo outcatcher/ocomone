@@ -1,12 +1,12 @@
 # -*- coding=utf-8 -*-
 """Library for wiring widget class to file with locators"""
+
 import csv
 from abc import ABC, abstractmethod
 from copy import copy
 from typing import Any, Callable, Dict, Iterable, List, Tuple, Type, Union
 
 import wrapt
-from selene.bys import by_css, by_link_text, by_name, by_partial_text, by_text
 from selene.elements import SeleneCollection, SeleneElement
 
 from ocomone import Resources
