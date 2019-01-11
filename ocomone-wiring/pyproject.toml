@@ -3,7 +3,7 @@ name = "ocomone-selene"
 version = "0.1.0"
 description = "Library for locator wiring by Anton Kachurin"
 authors = ["Anton Kachurin <katchuring@gmail.com>"]
-license = "MIT"
+license = "Apache-2.0"
 
 [tool.poetry.dependencies]
 python = "^3.7"
