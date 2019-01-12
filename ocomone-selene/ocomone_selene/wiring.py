@@ -132,7 +132,6 @@ def register_without_setter(cls: type):
 
 # Standard setters
 register_setter(SeleneElement, SeleneElement.set)
-# register_setter(Select, Select.select_by_value)
 register_without_setter(SeleneCollection)
 
 GetLocator = Callable[[str], Tuple[str, str]]
