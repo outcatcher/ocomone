@@ -66,7 +66,6 @@ def main():
     _save_cmd(command)
 
 
-
 if __name__ == '__main__':
     # subprocess.call("python3 -m pip install poetry", shell=True)
     main()
