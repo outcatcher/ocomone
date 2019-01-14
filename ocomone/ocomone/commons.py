@@ -22,9 +22,10 @@ class Resources:
         self.resource_root = os.path.abspath(f"{os.path.dirname(content_root)}/{resources_dir}")
 
     def __getitem__(self, resource_name):
-        """Return path to resource by given name"""
-        file_name = resource_name if os.path.exists(resource_name) else f"{self.resource_root}/{resource_name}"
-        return os.path.abspath(file_name)
+        """Return path to resource by given name. If given path is absolute, return if without change"""
+        if os.path.isabs(resource_name):
+            return resource_name
+        return os.path.abspath(f"{self.resource_root}/{resource_name}")
 
 
 def setup_logger(logger: logging.Logger, log_name: str = None,
