@@ -8,9 +8,10 @@ from copy import copy
 from typing import Any, Callable, Dict, Iterable, List, Tuple, Type, Union
 
 import wrapt
+from ocomone import Resources
+from selene.bys import by_css, by_link_text, by_name, by_partial_text, by_text
 from selene.elements import SeleneCollection, SeleneElement
 
-from ocomone import Resources
 from .bys import by_id, by_label
 
 __LOCATORS = Resources(os.getcwd(), resources_dir="resources/locators")
@@ -262,8 +263,8 @@ class Wired:
     def __init__(self, resource_path):
         self.resource_path = resource_path
 
-    def __call__(self, locator_file: str):
-        """See ``wired`` decorator doc"""
+    def __call__(self, locator_file: str) -> Wireable:
+        """See ``@wired`` decorator doc"""
         return wired(locator_file, self.resource_path)
 
 
