@@ -42,6 +42,7 @@ class Wireable(ABC):
 
 
 def _is_subclass(cls, types: Union[type, Tuple[type]]):
+    """Strange behaviour for issubclass() (m.b. https://bugs.python.org/issue33018)"""
     try:
         return issubclass(cls, types)
     except TypeError:
@@ -49,10 +50,9 @@ def _is_subclass(cls, types: Union[type, Tuple[type]]):
     if not isinstance(types, tuple):
         types = (types,)
     for typ in types:
-        try:
-            return issubclass(cls, typ)
-        except TypeError:  # https://bugs.python.org/issue33018
-            return False
+        if typ in cls.__mro__:
+            return True
+    return False
 
 
 def __sort_classes():
