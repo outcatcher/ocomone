@@ -14,8 +14,6 @@ from selene.elements import SeleneCollection, SeleneElement
 
 from .bys import by_id, by_label
 
-__LOCATORS = Resources(os.getcwd(), resources_dir="resources/locators")
-
 _GetterFnc = Callable[[Any], Any]
 _SetterFnc = Callable[[Any, Any], None]  # self, value, field_name
 _InnerSetter = Callable[[Any, Any, str], None]
@@ -255,20 +253,7 @@ def _cached_getter(getter: _GetterFnc, field_name):
     return __real_getter
 
 
-class Wired:
-    """Setup resource path for creating ``@wired`` annotations"""
-
-    __slots__ = ["resource_path"]
-
-    def __init__(self, resource_path):
-        self.resource_path = resource_path
-
-    def __call__(self, locator_file: str) -> Wireable:
-        """See ``@wired`` decorator doc"""
-        return wired(locator_file, self.resource_path)
-
-
-def wired(locator_file, resources_dir=__LOCATORS):
+class WiredDecorator:
     """Convert annotated attributes of applied classes to properties
 
     Works only for not assigned attributes, e.g.
@@ -291,31 +276,52 @@ def wired(locator_file, resources_dir=__LOCATORS):
 
     """
 
-    if not isinstance(locator_file, str):
-        raise TypeError("@wired argument should be string")
+    def __init__(self, resources: Union[str, Resources]):
+        """Bind to given resources, either as instance of :class:`Resources` or path to resources directory"""
+        if isinstance(resources, str):
+            path = os.path.abspath(resources)
+            resources = Resources(path, "")
+        self.resources = resources
 
-    with open(resources_dir[locator_file]) as input_file:
-        mappings = csv.reader(input_file, delimiter=":")
-        # element:strategy:selector -> element: (strategy, selector)
-        locators: Dict[str, GetLocator] = {mapping[0]: _convert_locator(*mapping[1:]) for mapping in mappings}
+    def __call__(self, locator_file: str) -> Wireable:
+        """Wire given class with given locator file, for details see :class:`Wired`"""
 
-    @wrapt.decorator
-    def _wired(wrapped: Type[Wireable], _instance=None, args=(), kwargs=None):
-        wrapped.strategies = copy(_STRATEGIES)
-        annotations = wrapped.__annotations__
-        for attr in annotations:  # through all annotated attributes
-            if not hasattr(wrapped, attr):  # only not assigned attributes
-                attr_cls = annotations[attr]
-                getter = _wired_getter(attr_cls, locators[attr])
-                getter = _cached_getter(getter, attr)  # Selene handles reload of elements, so we can cache it
-                new_property = _to_property(attr, attr_cls, getter)
-                setattr(wrapped, attr, new_property)  # assign property to attribute
-        # noinspection PyArgumentList
-        _instance = wrapped(*args, **kwargs)
+        if not isinstance(locator_file, str):
+            raise TypeError("@wired argument should be string")
 
-        # label strategy is context-dependent
-        root_element = _instance.root_element if hasattr(_instance, "root_element") else None
-        _instance.register_strategy("label", lambda text: by_label(text, root_element))
-        return _instance
+        with open(self.resources[locator_file]) as input_file:
+            mappings = csv.reader(input_file, delimiter=":")
+            # element:strategy:selector -> element: (strategy, selector)
+            locators: Dict[str, GetLocator] = {mapping[0]: _convert_locator(*mapping[1:]) for mapping in mappings}
 
-    return _wired
+        @wrapt.decorator
+        def _wired(wrapped: Type[Wireable], _instance=None, args=(), kwargs=None) -> Wireable:
+            wrapped.strategies = copy(_STRATEGIES)
+            annotations = wrapped.__annotations__
+            for attr in annotations:  # through all annotated attributes
+                if not hasattr(wrapped, attr):  # only not assigned attributes
+                    attr_cls = annotations[attr]
+                    getter = _wired_getter(attr_cls, locators[attr])
+                    getter = _cached_getter(getter, attr)  # Selene handles reload of elements, so we can cache it
+                    new_property = _to_property(attr, attr_cls, getter)
+                    setattr(wrapped, attr, new_property)  # assign property to attribute
+            # noinspection PyArgumentList
+            _instance = wrapped(*args, **kwargs)
+
+            # label strategy is context-dependent
+            root_element = _instance.root_element if hasattr(_instance, "root_element") else None
+            _instance.register_strategy("label", lambda text: by_label(text, root_element))
+            return _instance
+
+        return _wired
+
+
+DEFAULT_WIRED = WiredDecorator(Resources(os.getcwd(), resources_dir="resources/locators"))
+
+
+def wired(locator_file):
+    """Wire decorator with resources path ``./resources/locators``
+
+    See :class:`Wired` documentation
+    """
+    return DEFAULT_WIRED(locator_file)
