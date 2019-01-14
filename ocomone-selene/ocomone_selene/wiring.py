@@ -3,7 +3,6 @@
 
 import csv
 import os
-from abc import ABC, abstractmethod
 from copy import copy
 from typing import Any, Callable, Dict, Iterable, List, Tuple, Type, Union
 
@@ -23,18 +22,18 @@ __WIRED_CLASS_SETTERS: Dict[type, _InnerSetter] = {}
 __WIRED_CLASS_ORDER: List[type] = []
 
 
-class Wireable(ABC):
-    """Abstract class defining methods and field required for valid usage with @wired(...) decorator"""
+class Wireable:
+    """Base class defining methods and field required for valid usage with @wired(...) decorator"""
 
     strategies: "_StrategyDict"
 
-    @abstractmethod
     def elements(self, locator) -> SeleneCollection:
         """Return SeleneCollection (multiple elements) by locator"""
+        raise NotImplementedError
 
-    @abstractmethod
     def element(self, locator) -> SeleneElement:
         """Return single SeleneElement by locator"""
+        raise NotImplementedError
 
     def register_strategy(self, name: str, strategy: "GetLocator"):
         """Register new search strategy only for this object"""

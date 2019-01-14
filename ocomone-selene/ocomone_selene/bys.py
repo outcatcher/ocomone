@@ -16,5 +16,8 @@ def by_id(element_id: str):
 def by_label(label_text: str, parent: SeleneElement = None):
     """Search element by corresponding label"""
     element = browser.element if parent is None else parent.element
-    target_id = element(by_partial_text(label_text)).get_attribute("for")
+    label = element(by_partial_text(label_text))
+    target_id = label.get_attribute("for")
+    if target_id is None:
+        raise TypeError(f"Label `{parent}` -> `{label}` has no attribute @for")
     return by_id(target_id)

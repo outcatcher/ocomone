@@ -1,7 +1,6 @@
 # -*- coding=utf-8 -*-
 """Wrapper for most common used web elements"""
 
-from abc import ABC
 from enum import Enum
 from typing import Union
 
@@ -11,9 +10,7 @@ from selenium.webdriver.support.select import Select as _Select
 from .wiring import Wireable, register_setter, register_without_setter
 
 
-# pylint: disable=abstract-method
-
-class SeleneElementWrapper(SeleneElement, ABC):
+class SeleneElementWrapper(SeleneElement):
     """Superclass for wrappers around :class:`SeleneElement`"""
 
     def __init__(self, _element: SeleneElement):

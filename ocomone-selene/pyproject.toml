@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ocomone-selene"
-version = "0.1.6"
+version = "0.1.7"
 description = "Library for locator wiring by Anton Kachurin"
 authors = ["Anton Kachurin <katchuring@gmail.com>"]
 license = "Apache-2.0"
