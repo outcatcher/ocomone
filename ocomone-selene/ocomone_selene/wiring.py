@@ -2,6 +2,7 @@
 """Library for wiring widget class to file with locators"""
 
 import csv
+import os
 from abc import ABC, abstractmethod
 from copy import copy
 from typing import Any, Callable, Dict, Iterable, List, Tuple, Type, Union
@@ -12,7 +13,7 @@ from selene.elements import SeleneCollection, SeleneElement
 from ocomone import Resources
 from .bys import by_id, by_label
 
-__LOCATORS = Resources(__file__, resources_dir="resources/locators")
+__LOCATORS = Resources(os.getcwd(), resources_dir="resources/locators")
 
 _GetterFnc = Callable[[Any], Any]
 _SetterFnc = Callable[[Any, Any], None]  # self, value, field_name
@@ -253,7 +254,20 @@ def _cached_getter(getter: _GetterFnc, field_name):
     return __real_getter
 
 
-def wired(locator_file):
+class Wired:
+    """Setup resource path for creating ``@wired`` annotations"""
+
+    __slots__ = ["resource_path"]
+
+    def __init__(self, resource_path):
+        self.resource_path = resource_path
+
+    def __call__(self, locator_file: str):
+        """See ``wired`` decorator doc"""
+        return wired(locator_file, self.resource_path)
+
+
+def wired(locator_file, resources_dir=__LOCATORS):
     """Convert annotated attributes of applied classes to properties
 
     Works only for not assigned attributes, e.g.
@@ -279,7 +293,7 @@ def wired(locator_file):
     if not isinstance(locator_file, str):
         raise TypeError("@wired argument should be string")
 
-    with open(__LOCATORS[locator_file]) as input_file:
+    with open(resources_dir[locator_file]) as input_file:
         mappings = csv.reader(input_file, delimiter=":")
         # element:strategy:selector -> element: (strategy, selector)
         locators: Dict[str, GetLocator] = {mapping[0]: _convert_locator(*mapping[1:]) for mapping in mappings}

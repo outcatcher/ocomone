@@ -1,12 +1,12 @@
 [tool.poetry]
-name = "pypi-server"
+name = "ocomone-pypi"
 version = "0.1.0"
 description = "Minimal pypi-server"
 authors = ["Anton Kachurin <katchuring@gmail.com>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.6.2"
 pypiserver = "^1.2"
 passlib = "^1.7"
 bcrypt = "^3.1"
