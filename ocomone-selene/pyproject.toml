@@ -11,6 +11,7 @@ url = "https://manhwa.caritc.com/pypi/simple/"
 
 [tool.poetry.dependencies]
 python = "^3.6.2"
+
 wrapt = "^1.11"
 selene = "=1.0.0a13"
 pytest = "^4.1"
