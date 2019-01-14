@@ -301,7 +301,11 @@ class WiredDecorator:
             for attr in annotations:  # through all annotated attributes
                 if not hasattr(wrapped, attr):  # only not assigned attributes
                     attr_cls = annotations[attr]
-                    getter = _wired_getter(attr_cls, locators[attr])
+                    try:
+                        locator = locators[attr]
+                    except KeyError:
+                        raise KeyError(f"Missing `{attr}` in file `{locator_file}`")
+                    getter = _wired_getter(attr_cls, locator)
                     getter = _cached_getter(getter, attr)  # Selene handles reload of elements, so we can cache it
                     new_property = _to_property(attr, attr_cls, getter)
                     setattr(wrapped, attr, new_property)  # assign property to attribute
