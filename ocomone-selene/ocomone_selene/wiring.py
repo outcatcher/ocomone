@@ -6,7 +6,6 @@ import os
 from copy import copy
 from typing import Any, Callable, Dict, Iterable, List, Tuple, Type, Union
 
-import wrapt
 from ocomone import Resources
 from selene.bys import by_css, by_link_text, by_name, by_partial_text, by_text
 from selene.elements import SeleneCollection, SeleneElement
@@ -252,6 +251,45 @@ def _cached_getter(getter: _GetterFnc, field_name):
     return __real_getter
 
 
+def _wrapped_class(wrapped: Type[Wireable]) -> Type[Wireable]:
+    wrapped_meta = type(wrapped)
+
+    # noinspection PyMethodParameters
+    class DecoratedMeta(wrapped_meta):
+        """Metaclass for hiding changes in class """
+
+        def __new__(mcs, *args, **kwargs):
+            cls = super().__new__(*args, **kwargs)
+            cls.__name__ = wrapped.__name__
+            return cls
+
+        def __repr__(cls: type):
+            # noinspection PyArgumentList
+            original_repr = wrapped_meta.__repr__(cls)
+            if original_repr != type.__repr__(cls):  # if there were changes to __repr__
+                return original_repr
+            return f"<class '{wrapped.__name__}'>"
+
+    # noinspection PyAbstractClass
+    class LabelStrategyProxy(wrapped, metaclass=DecoratedMeta):  # type: Type[Wireable]
+        """Wraps wireable class to update label strategy"""
+
+        def __repr__(self):
+            original_repr = wrapped.__repr__(self)
+            if original_repr != object.__repr__(self):  # if there were changes to __repr__
+                return original_repr
+            return f"<{wrapped} object at {hex(id(self))}>"
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+
+            # label strategy is context-dependent
+            root_element = self.root_element if hasattr(self, "root_element") else None
+            self.register_strategy("label", lambda text: by_label(text, root_element))
+
+    return LabelStrategyProxy
+
+
 class WiredDecorator:
     """Convert annotated attributes of applied classes to properties
 
@@ -282,8 +320,8 @@ class WiredDecorator:
             resources = Resources(path, "")
         self.resources = resources
 
-    def __call__(self, locator_file: str) -> Wireable:
-        """Wire given class with given locator file, for details see :class:`Wired`"""
+    def __call__(self, locator_file: str):
+        """Returning decorator to be used for wiring class"""
 
         if not isinstance(locator_file, str):
             raise TypeError("@wired argument should be string")
@@ -293,8 +331,8 @@ class WiredDecorator:
             # element:strategy:selector -> element: (strategy, selector)
             locators: Dict[str, GetLocator] = {mapping[0]: _convert_locator(*mapping[1:]) for mapping in mappings}
 
-        @wrapt.decorator
-        def _wired(wrapped: Type[Wireable], _instance=None, args=(), kwargs=None) -> Wireable:
+        def _wired(wrapped: Type[Wireable]) -> Type[Wireable]:
+
             wrapped.strategies = copy(_STRATEGIES)
             annotations = wrapped.__annotations__
             for attr in annotations:  # through all annotated attributes
@@ -308,13 +346,8 @@ class WiredDecorator:
                     getter = _cached_getter(getter, attr)  # Selene handles reload of elements, so we can cache it
                     new_property = _to_property(attr, attr_cls, getter)
                     setattr(wrapped, attr, new_property)  # assign property to attribute
-            # noinspection PyArgumentList
-            _instance = wrapped(*args, **kwargs)
 
-            # label strategy is context-dependent
-            root_element = _instance.root_element if hasattr(_instance, "root_element") else None
-            _instance.register_strategy("label", lambda text: by_label(text, root_element))
-            return _instance
+            return _wrapped_class(wrapped)
 
         return _wired
 
