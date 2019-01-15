@@ -1,5 +1,6 @@
 # -*- coding=utf-8 -*-
 """Base class for creating Wireable widgets"""
+from selene import browser
 
 from .elements import ReadonlyElement, register_without_setter
 from .wiring import Wireable
@@ -21,6 +22,8 @@ class BaseWidget(Wireable, metaclass=WidgetMeta):
     """Base class for widgets"""
 
     def __init__(self, root_element: ReadonlyElement):
+        if root_element is None:
+            root_element = browser.element("html")
         self.root_element = root_element
 
     @property

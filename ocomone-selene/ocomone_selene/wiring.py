@@ -5,6 +5,7 @@ import os
 from copy import copy
 from typing import Any, Callable, Dict, Iterable, List, Tuple, Type, Union
 
+import wrapt
 from ocomone import Resources
 from selene.bys import by_css, by_link_text, by_name, by_partial_text, by_text
 from selene.elements import SeleneCollection, SeleneElement
@@ -250,44 +251,6 @@ def _cached_getter(getter: _GetterFnc, field_name):
     return __real_getter
 
 
-def _wrapped_class(wrapped: Type[Wireable]) -> Type[Wireable]:
-    wrapped_meta = type(wrapped)
-
-    # noinspection PyMethodParameters
-    class DecoratedMeta(wrapped_meta):
-        """Metaclass for hiding changes in class """
-
-        # noinspection PyShadowingBuiltins
-        def __new__(mcs, name, bases=None, dict=None):
-            return type(wrapped.__name__, bases, dict)
-
-        def __repr__(cls: type):
-            # noinspection PyArgumentList
-            original_repr = wrapped_meta.__repr__(cls)
-            if original_repr != type.__repr__(cls):  # if there were changes to __repr__
-                return original_repr
-            return f"<class '{wrapped.__name__}'>"
-
-    # noinspection PyAbstractClass
-    class LabelStrategyProxy(wrapped, metaclass=DecoratedMeta):  # type: Type[Wireable]
-        """Wraps wireable class to update label strategy"""
-
-        def __repr__(self):
-            original_repr = wrapped.__repr__(self)
-            if original_repr != object.__repr__(self):  # if there were changes to __repr__
-                return original_repr
-            return f"<{wrapped} object at {hex(id(self))}>"
-
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-
-            # label strategy is context-dependent
-            root_element = self.root_element if hasattr(self, "root_element") else None
-            self.register_strategy("label", lambda text: by_label(text, root_element))
-
-    return LabelStrategyProxy
-
-
 class WiredDecorator:
     """Convert annotated attributes of applied classes to properties
 
@@ -318,12 +281,24 @@ class WiredDecorator:
             resources = Resources(path, "")
         self.resources = resources
 
-    def __parse_csv(self, locator_file):
+    def __parse_csv(self, locator_file) -> Dict[str, GetLocator]:
         import csv
         with open(self.resources[locator_file]) as input_file:
             mappings = csv.reader(input_file, delimiter=":")
             # element:strategy:selector -> element: (strategy, selector)
             locators: Dict[str, GetLocator] = {mapping[0]: _convert_locator(*mapping[1:]) for mapping in mappings}
+        return locators
+
+    def __parse_yml(self, locator_file) -> Dict[str, GetLocator]:
+        import yaml
+
+        def _parse_yml_entry(entry: dict):
+            return list(entry.items())[0]  # we use just first locator
+
+        with open(self.resources[locator_file]) as input_file:
+            mappings = yaml.load(input_file)
+        locators = {item: _parse_yml_entry(locator) for item, locator in mappings.items}
+
         return locators
 
     def __call__(self, locator_file: str):
@@ -334,26 +309,42 @@ class WiredDecorator:
 
         if locator_file.endswith(".csv"):
             locators = self.__parse_csv(locator_file)
+        elif locator_file.endswith(".yml") or locator_file.endswith(".yaml"):
+            locators = self.__parse_yml(locator_file)
         else:
             raise RuntimeError(f"Invalid locator file: {locator_file}")
 
-        def _wired(wrapped: Type[Wireable]) -> Type[Wireable]:
+        @wrapt.decorator
+        def _wired(wrapped: Type[Wireable], _instance=None, args=(), kwargs=None) -> Wireable:
 
-            wrapped.strategies = copy(_STRATEGIES)
-            annotations = wrapped.__annotations__
-            for attr in annotations:  # through all annotated attributes
-                if not hasattr(wrapped, attr):  # only not assigned attributes
-                    attr_cls = annotations[attr]
-                    try:
-                        locator = locators[attr]
-                    except KeyError:
-                        raise KeyError(f"Missing `{attr}` in file `{locator_file}`")
-                    getter = _wired_getter(attr_cls, locator)
-                    getter = _cached_getter(getter, attr)  # Selene handles reload of elements, so we can cache it
-                    new_property = _to_property(attr, attr_cls, getter)
-                    setattr(wrapped, attr, new_property)  # assign property to attribute
+            def _wire_cls():
+                if hasattr(wrapped, "__wired__") and (wrapped.__wired__ == wrapped.__name__):
+                    print("not misregistered")
+                    return  # already wired
+                wrapped.strategies = copy(_STRATEGIES)
+                annotations = wrapped.__annotations__
+                for attr in annotations:  # through all annotated attributes
+                    if not hasattr(wrapped, attr):  # only not assigned attributes
+                        attr_cls = annotations[attr]
+                        try:
+                            locator = locators[attr]
+                        except KeyError:
+                            raise KeyError(f"Missing `{attr}` in file `{locator_file}`")
+                        getter = _wired_getter(attr_cls, locator)
+                        getter = _cached_getter(getter, attr)  # Selene handles reload of elements, so we can cache it
+                        new_property = _to_property(attr, attr_cls, getter)
+                        setattr(wrapped, attr, new_property)  # assign property to attribute
+                wrapped.__wired__ = wrapped.__name__
 
-            return _wrapped_class(wrapped)
+            _wire_cls()
+
+            # noinspection PyArgumentList
+            _instance = wrapped(*args, **kwargs)
+
+            # label strategy is context-dependent
+            root_element = _instance.root_element if hasattr(_instance, "root_element") else None
+            _instance.register_strategy("label", lambda text: by_label(text, root_element))
+            return _instance
 
         return _wired
 

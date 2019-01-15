@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ocomone-selene"
-version = "0.1.8b2"
+version = "0.1.8b3"
 description = "Library for locator wiring by Anton Kachurin"
 authors = ["Anton Kachurin <katchuring@gmail.com>"]
 license = "Apache-2.0"
@@ -17,6 +17,7 @@ selene = "=1.0.0a13"
 pytest = "^4.1"
 allure-pytest = "^2.5"
 ocomone = "^0.1.0"
+pyyaml = "^3.13"
 
 [tool.poetry.dev-dependencies]
 
