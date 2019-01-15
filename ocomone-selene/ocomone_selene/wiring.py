@@ -1,7 +1,6 @@
 # -*- coding=utf-8 -*-
 """Library for wiring widget class to file with locators"""
 
-import csv
 import os
 from copy import copy
 from typing import Any, Callable, Dict, Iterable, List, Tuple, Type, Union
@@ -258,10 +257,9 @@ def _wrapped_class(wrapped: Type[Wireable]) -> Type[Wireable]:
     class DecoratedMeta(wrapped_meta):
         """Metaclass for hiding changes in class """
 
-        def __new__(mcs, *args, **kwargs):
-            cls = super().__new__(*args, **kwargs)
-            cls.__name__ = wrapped.__name__
-            return cls
+        # noinspection PyShadowingBuiltins
+        def __new__(mcs, name, bases=None, dict=None):
+            return type(wrapped.__name__, bases, dict)
 
         def __repr__(cls: type):
             # noinspection PyArgumentList
@@ -320,16 +318,24 @@ class WiredDecorator:
             resources = Resources(path, "")
         self.resources = resources
 
+    def __parse_csv(self, locator_file):
+        import csv
+        with open(self.resources[locator_file]) as input_file:
+            mappings = csv.reader(input_file, delimiter=":")
+            # element:strategy:selector -> element: (strategy, selector)
+            locators: Dict[str, GetLocator] = {mapping[0]: _convert_locator(*mapping[1:]) for mapping in mappings}
+        return locators
+
     def __call__(self, locator_file: str):
         """Returning decorator to be used for wiring class"""
 
         if not isinstance(locator_file, str):
             raise TypeError("@wired argument should be string")
 
-        with open(self.resources[locator_file]) as input_file:
-            mappings = csv.reader(input_file, delimiter=":")
-            # element:strategy:selector -> element: (strategy, selector)
-            locators: Dict[str, GetLocator] = {mapping[0]: _convert_locator(*mapping[1:]) for mapping in mappings}
+        if locator_file.endswith(".csv"):
+            locators = self.__parse_csv(locator_file)
+        else:
+            raise RuntimeError(f"Invalid locator file: {locator_file}")
 
         def _wired(wrapped: Type[Wireable]) -> Type[Wireable]:
 
