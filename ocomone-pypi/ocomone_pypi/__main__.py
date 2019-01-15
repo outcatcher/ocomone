@@ -15,7 +15,7 @@ def _main():
         install.main()
     if args.start:
         script_file = install.get_config_file()
-        subprocess.call(["bash", script_file], shell=True)
+        subprocess.call(["/bin/sh", script_file], shell=True)
     if args.stop:
         subprocess.call(["start-stop-daemon", "-Kp", install.get_pid_file()])
 

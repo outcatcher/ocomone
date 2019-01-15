@@ -1,9 +1,13 @@
 [tool.poetry]
 name = "ocomone-pypi"
-version = "0.1.0"
+version = "0.1.1"
 description = "Minimal pypi-server"
 authors = ["Anton Kachurin <katchuring@gmail.com>"]
 license = "MIT"
+
+[[tool.poetry.source]]
+name = "my"
+url = "http://ec2-34-245-34-71.eu-west-1.compute.amazonaws.com/simple/"
 
 [tool.poetry.dependencies]
 python = "^3.6.2"

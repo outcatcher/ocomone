@@ -3,7 +3,7 @@
 
 import os
 from copy import copy
-from typing import Any, Callable, Dict, Iterable, List, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Tuple, Type, Union
 
 import wrapt
 from ocomone import Resources

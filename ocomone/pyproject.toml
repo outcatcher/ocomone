@@ -5,6 +5,10 @@ description = "Common helper library by Anton Kachurin"
 authors = ["Anton Kachurin <katchuring@gmail.com>"]
 license = "Apache-2.0"
 
+[[tool.poetry.source]]
+name = "my"
+url = "http://ec2-34-245-34-71.eu-west-1.compute.amazonaws.com/simple/"
+
 [tool.poetry.dependencies]
 python = "^3.7"
 
