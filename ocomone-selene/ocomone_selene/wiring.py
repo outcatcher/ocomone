@@ -24,7 +24,8 @@ __WIRED_CLASS_ORDER: List[type] = []
 class Wireable:
     """Base class defining methods and field required for valid usage with @wired(...) decorator"""
 
-    strategies: "_StrategyDict"
+    _strategies: "_StrategyDict"
+    _locators: Dict[str, "GetLocator"]
 
     def elements(self, locator) -> SeleneCollection:
         """Return SeleneCollection (multiple elements) by locator"""
@@ -36,15 +37,11 @@ class Wireable:
 
     def register_strategy(self, name: str, strategy: "GetLocator"):
         """Register new search strategy only for this object"""
-        self.strategies.update({name: strategy})
+        self._strategies.update({name: strategy})
 
 
-def _is_subclass(cls, types: Union[type, Tuple[type]]):
+def _is_subclass(cls, types: Union[type, Tuple[type, ...]]):
     """Strange behaviour for issubclass() (m.b. https://bugs.python.org/issue33018)"""
-    try:
-        return issubclass(cls, types)
-    except TypeError:
-        pass
     if not isinstance(types, tuple):
         types = (types,)
     for typ in types:
@@ -77,10 +74,10 @@ def _register_class(cls, setter: _InnerSetter):
     __sort_classes()
     __wco = __WIRED_CLASS_ORDER
 
+    __WIRED_CLASS_SETTERS.update({cls: setter})
+
     if cls in __WIRED_CLASS_ORDER:
         return
-
-    __WIRED_CLASS_SETTERS.update({cls: setter})
 
     # if not subclass of any existing class, put to back
     if not _is_subclass(cls, tuple(__wco)):
@@ -135,26 +132,30 @@ register_without_setter(SeleneCollection)
 GetLocator = Callable[[str], Tuple[str, str]]
 
 
-def __convert_entity(element, cls):
+def __convert_entity(cls, *cls_args):
+    element = cls_args[0]
     if not isinstance(element, cls):  # if need to convert SeleneElement to some other
         try:
             # noinspection PyArgumentList
-            element = cls(element)  # cls.__init__ must accept SeleneElement as lone argument
+            element = cls(*cls_args)  # cls.__init__ must accept SeleneElement as lone argument
         except TypeError:  # this class has inappropriate __init__
-            raise TypeError(f"Impossible to wrap element with {cls}, __init__ won't accept {element}")
+            try:
+                element = cls()
+            except TypeError:
+                raise TypeError(f"Impossible to wrap element with {cls}, __init__ won't accept {element}")
     return element
 
 
-def _wired_getter(cls: Type[Wireable], getter: Callable[[Any], Tuple[str, str]]):
-    if _is_subclass(cls, Iterable):  # return multiple elements if attribute is iterable
-        def __getter(self: cls) -> cls:
+def _wired_getter(cls: Type[Wireable], getter: Callable[[Any], Tuple[str, str]], *field_class_args):
+    if _is_subclass(cls, (SeleneCollection, list, tuple)):  # return multiple elements if attribute is iterable
+        def __getter(self: cls) -> SeleneCollection:
             elements = self.elements(getter(self))
-            elements = __convert_entity(elements, cls)
+            elements = __convert_entity(cls, elements, *field_class_args)
             return elements
     else:
-        def __getter(self: Wireable) -> cls:
+        def __getter(self: Wireable) -> SeleneElement:
             element = self.element(getter(self))
-            element = __convert_entity(element, cls)
+            element = __convert_entity(cls, element, *field_class_args)
             return element
     return __getter
 
@@ -210,7 +211,7 @@ def _convert_locator(strategy: str, locator: str):
     """Returning method, converting locator from short presentation to full"""
 
     def _convert(self: Wireable):
-        _method = self.strategies[strategy]
+        _method = self._strategies[strategy]
         _by, _selector = _method(locator)
         return _by, _selector
 
@@ -236,7 +237,7 @@ def _to_property(field_name, field_cls, getter):
     for cls in __WIRED_CLASS_ORDER:
         if _is_subclass(field_cls, cls):
             return property(getter, __property_setter(cls))
-    return None
+    raise RuntimeError(f"Can't convert {field_name}({field_cls}) to property")
 
 
 def _cached_getter(getter: _GetterFnc, field_name):
@@ -321,7 +322,8 @@ class WiredDecorator:
                 if hasattr(wrapped, "__wired__") and (wrapped.__wired__ == wrapped.__name__):
                     print("not misregistered")
                     return  # already wired
-                wrapped.strategies = copy(_STRATEGIES)
+                wrapped._strategies = copy(_STRATEGIES)
+                wrapped._locators = locators  # store loaded locators inside of class
                 annotations = wrapped.__annotations__
                 for attr in annotations:  # through all annotated attributes
                     if not hasattr(wrapped, attr):  # only not assigned attributes
@@ -350,6 +352,13 @@ class WiredDecorator:
 
 
 DEFAULT_WIRED = WiredDecorator(Resources(os.getcwd(), resources_dir="resources/locators"))
+
+
+def get_custom_element(bind_obj: Wireable, field_name, field_class=SeleneElement, *field_class_args):
+    """Get field with given name for wired class"""
+    getter = _wired_getter(field_class, bind_obj._locators[field_name], *field_class_args)
+    element = getter(bind_obj)
+    return element
 
 
 def wired(locator_file):
