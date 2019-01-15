@@ -7,7 +7,7 @@ license = "MIT"
 
 [[tool.poetry.source]]
 name = "my"
-url = "http://outcatcher.site/simple/"
+url = "http://pypi.outcatcher.site/simple/"
 
 [tool.poetry.dependencies]
 python = "^3.6.2"
