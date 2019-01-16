@@ -3,11 +3,15 @@ name = "ocomone-pypi"
 version = "0.1.1"
 description = "Minimal pypi-server"
 authors = ["Anton Kachurin <katchuring@gmail.com>"]
-license = "MIT"
+license = "Apache-2.0"
 
 [[tool.poetry.source]]
 name = "my"
-url = "http://pypi.outcatcher.site/simple/"
+url = "http://pypi.outcatcher.com/simple/"
+
+[[tool.poetry.source]]
+name = "my_failover"
+url = "http://pypi2.outcatcher.com/simple/"
 
 [tool.poetry.dependencies]
 python = "^3.6.2"
