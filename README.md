@@ -1,4 +1,4 @@
-This is set of libraries commonly used by @outcatcher and constantly moving between projects
+Set of common libraries by @outcatcher
 
 [ocomone](https://gitlab.com/outcatcher/ocomone/tree/master/ocomone) — library with most common functions, used by other libraries
 
