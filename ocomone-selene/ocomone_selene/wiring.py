@@ -294,11 +294,15 @@ class WiredDecorator:
         import yaml
 
         def _parse_yml_entry(entry: dict):
-            return list(entry.items())[0]  # we use just first locator
+            if isinstance(entry, str):
+                strategy, selector = entry.split(":")
+            else:
+                strategy, selector = list(entry.items())[0]  # we use just first locator
+            return _convert_locator(strategy, selector)
 
         with open(self.resources[locator_file]) as input_file:
             mappings = yaml.load(input_file)
-        locators = {item: _parse_yml_entry(locator) for item, locator in mappings.items}
+        locators = {item: _parse_yml_entry(locator) for item, locator in mappings.items()}
 
         return locators
 
