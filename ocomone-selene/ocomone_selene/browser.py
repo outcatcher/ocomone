@@ -17,6 +17,7 @@ def _headless_browser(browser_name: BrowserName):
     else:
         raise AttributeError(f"Invalid browser: {browser_name}")
     options = Options()
+    options.headless = True
     driver = drv_cls(executable_path=Manager().install(), options=options)
     browser.set_driver(driver)
 

@@ -1,7 +1,6 @@
 # -*- coding=utf-8 -*-
-from selene import browser, config
-from selene.browsers import BrowserName
-from selene.elements import SeleneElement, SeleneCollection
+from selene import browser
+from selene.elements import SeleneCollection, SeleneElement
 
 from ocomone_selene.comators import CommentParser
 
@@ -16,7 +15,6 @@ class TestCommentedLocator(CommentParser):
     g_search_button: SeleneElement  # css:button
 
 
-if __name__ == '__main__':
-    config.browser_name = BrowserName.CHROME
+def test_locators_working(start_stop):
     browser.open_url("https://ya.ru/")
     assert TestCommentedLocator().g_search_button.text == "Найти"
