@@ -14,7 +14,7 @@ class CommentParsingMeta(type):
     """Metaclass for creating class with locators in comments"""
 
     def __new__(mcs, *args, **kwargs):
-        cls = super().__new__(mcs, *args, **kwargs)
+        cls = type(*args, **kwargs)
         lines = inspect.getsourcelines(cls)[0]
         cls._strategies = copy(_STRATEGIES)
         for line in lines:
