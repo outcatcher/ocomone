@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, List, Tuple, Type, Union
 
 import wrapt
 from ocomone import Resources
+from selene import browser
 from selene.bys import by_css, by_link_text, by_name, by_partial_text, by_text
 from selene.elements import SeleneCollection, SeleneElement
 
@@ -18,7 +19,7 @@ _InnerSetter = Callable[[Any, Any, str], None]
 
 __WIRED_CLASS_SETTERS: Dict[type, _InnerSetter] = {}
 
-__WIRED_CLASS_ORDER: List[type] = []
+_WIRED_CLASS_ORDER: List[type] = []
 
 
 class Wireable:
@@ -60,9 +61,9 @@ def __sort_classes():
             prev_cls = _cls
         return True
 
-    length = len(__WIRED_CLASS_ORDER)
-    while not _is_sorted(__WIRED_CLASS_ORDER):
-        __wc = __WIRED_CLASS_ORDER
+    length = len(_WIRED_CLASS_ORDER)
+    while not _is_sorted(_WIRED_CLASS_ORDER):
+        __wc = _WIRED_CLASS_ORDER
         for index in range(length - 1):
             # noinspection PyTypeHints
             if issubclass(__wc[index + 1], __wc[index]):
@@ -72,11 +73,11 @@ def __sort_classes():
 def _register_class(cls, setter: _InnerSetter):
     """Insert new class into wired classes registry"""
     __sort_classes()
-    __wco = __WIRED_CLASS_ORDER
+    __wco = _WIRED_CLASS_ORDER
 
     __WIRED_CLASS_SETTERS.update({cls: setter})
 
-    if cls in __WIRED_CLASS_ORDER:
+    if cls in _WIRED_CLASS_ORDER:
         return
 
     # if not subclass of any existing class, put to back
@@ -149,12 +150,14 @@ def __convert_entity(cls, *cls_args):
 def _wired_getter(cls: Type[Wireable], getter: Callable[[Any], Tuple[str, str]], *field_class_args):
     if _is_subclass(cls, (SeleneCollection, list, tuple)):  # return multiple elements if attribute is iterable
         def __getter(self: cls) -> SeleneCollection:
-            elements = self.elements(getter(self))
+            f_elements = self.elements if hasattr(self, "elements") else browser.elements
+            elements = f_elements(getter(self))
             elements = __convert_entity(cls, elements, *field_class_args)
             return elements
     else:
         def __getter(self: Wireable) -> SeleneElement:
-            element = self.element(getter(self))
+            f_elements = self.element if hasattr(self, "element") else browser.element
+            element = f_elements(getter(self))
             element = __convert_entity(cls, element, *field_class_args)
             return element
     return __getter
@@ -211,8 +214,8 @@ def _convert_locator(strategy: str, locator: str):
     """Returning method, converting locator from short presentation to full"""
 
     def _convert(self: Wireable):
-        _method = self._strategies[strategy]
-        _by, _selector = _method(locator)
+        _method = self._strategies[strategy.strip()]
+        _by, _selector = _method(locator.strip())
         return _by, _selector
 
     return _convert
@@ -234,7 +237,7 @@ def _to_property(field_name, field_cls, getter):
 
         return __inner
 
-    for cls in __WIRED_CLASS_ORDER:
+    for cls in _WIRED_CLASS_ORDER:
         if _is_subclass(field_cls, cls):
             return property(getter, __property_setter(cls))
     raise RuntimeError(f"Can't convert {field_name}({field_cls}) to property")
@@ -324,7 +327,6 @@ class WiredDecorator:
 
             def _wire_cls():
                 if hasattr(wrapped, "__wired__") and (wrapped.__wired__ == wrapped.__name__):
-                    print("not misregistered")
                     return  # already wired
                 wrapped._strategies = copy(_STRATEGIES)
                 wrapped._locators = locators  # store loaded locators inside of class
