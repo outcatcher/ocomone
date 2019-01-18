@@ -1,0 +1,4 @@
+button:
+    css: button
+input:
+    id: text
