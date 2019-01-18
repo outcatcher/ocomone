@@ -3,7 +3,7 @@
 
 import os
 from copy import copy
-from typing import Any, Callable, Dict, List, Tuple, Type, Union
+from typing import Any, Callable, Dict, Tuple, Type, Union
 
 import wrapt
 from ocomone import Resources
@@ -13,19 +13,19 @@ from selene.elements import SeleneCollection, SeleneElement
 
 from .bys import by_id, by_label
 
-_GetterFnc = Callable[[Any], Any]
 _SetterFnc = Callable[[Any, Any], None]  # self, value, field_name
 _InnerSetter = Callable[[Any, Any, str], None]
 
-__WIRED_CLASS_SETTERS: Dict[type, _InnerSetter] = {}
 
-_WIRED_CLASS_ORDER: List[type] = []
+class _RegisteredMixin:
+    """Mixin for registrable element"""
+    __set_value__: Callable[["_RegisteredMixin", Any], None]
 
 
-class Wireable:
+class Wireable(_RegisteredMixin):
     """Base class defining methods and field required for valid usage with @wired(...) decorator"""
 
-    _strategies: "_StrategyDict"
+    _strategies: Dict[str, "By"]
     _locators: Dict[str, "GetLocator"]
 
     def elements(self, locator) -> SeleneCollection:
@@ -36,88 +36,36 @@ class Wireable:
         """Return single SeleneElement by locator"""
         raise NotImplementedError
 
-    def register_strategy(self, name: str, strategy: "GetLocator"):
+    def register_strategy(self, name: str, strategy: "By"):
         """Register new search strategy only for this object"""
         self._strategies.update({name: strategy})
 
 
-def _is_subclass(cls, types: Union[type, Tuple[type, ...]]):
-    """Strange behaviour for issubclass() (m.b. https://bugs.python.org/issue33018)"""
-    if not isinstance(types, tuple):
-        types = (types,)
-    for typ in types:
-        if typ in cls.__mro__:
-            return True
-    return False
-
-
-def __sort_classes():
-    def _is_sorted(classes: List[type]):
-        """Most precise class should be the first"""
-        prev_cls = type
-        for _cls in classes:
-            if _is_subclass(_cls, prev_cls):
-                return False
-            prev_cls = _cls
-        return True
-
-    length = len(_WIRED_CLASS_ORDER)
-    while not _is_sorted(_WIRED_CLASS_ORDER):
-        __wc = _WIRED_CLASS_ORDER
-        for index in range(length - 1):
-            # noinspection PyTypeHints
-            if issubclass(__wc[index + 1], __wc[index]):
-                __wc[index + 1], __wc[index] = __wc[index], __wc[index + 1]  #
-
-
-def _register_class(cls, setter: _InnerSetter):
-    """Insert new class into wired classes registry"""
-    __sort_classes()
-    __wco = _WIRED_CLASS_ORDER
-
-    __WIRED_CLASS_SETTERS.update({cls: setter})
-
-    if cls in _WIRED_CLASS_ORDER:
-        return
-
-    # if not subclass of any existing class, put to back
-    if not _is_subclass(cls, tuple(__wco)):
-        __wco.append(cls)
-        return
-
-    # or put before any superclass
-    for existing_cls in __wco:  # pylint: disable=consider-using-enumerate
-        # noinspection PyTypeHints
-        if _is_subclass(cls, existing_cls):
-            __wco.insert(__wco.index(existing_cls), cls)
-            return
+_GetterFnc = Callable[[Wireable], _RegisteredMixin]
 
 
 def __do_nothing(*_):
     pass
 
 
-def register_setter(cls: type, method: _SetterFnc):
-    """Register new setter binding.
+def register_setter(cls: Type[_RegisteredMixin], method: _SetterFnc):
+    """Set new `__set_value__` method for class
 
     :param cls: class that will be used for bindings
     :param method: function used for setting field value
 
     Example: ``register_setter(SeleneElement, SeleneElement.set)``
     """
-    if isinstance(method, property):
-        method: _SetterFnc = method.__set__
 
-    def _real_setter(self: Wireable, value, field_name):
+    def _real_setter(self: cls, value):
         if value is None:
             return __do_nothing
-        field: cls = getattr(self, field_name)
-        return method(field, value)
+        return method(self, value)
 
-    _register_class(cls, _real_setter)
+    cls.__set_value__ = _real_setter
 
 
-def register_without_setter(cls: type):
+def register_without_setter(cls: Type[_RegisteredMixin]):
     """Register new class binding without setter"""
 
     def _read_only(*_) -> None:
@@ -130,7 +78,7 @@ def register_without_setter(cls: type):
 register_setter(SeleneElement, SeleneElement.set)
 register_without_setter(SeleneCollection)
 
-GetLocator = Callable[[str], Tuple[str, str]]
+GetLocator = Callable[[Wireable], Tuple[str, str]]
 
 
 def __convert_entity(cls, *cls_args):
@@ -147,23 +95,35 @@ def __convert_entity(cls, *cls_args):
     return element
 
 
-def _wired_getter(cls: Type[Wireable], getter: Callable[[Any], Tuple[str, str]], *field_class_args):
-    if _is_subclass(cls, (SeleneCollection, list, tuple)):  # return multiple elements if attribute is iterable
+def __is_subclass(cls: type, sup_cls):
+    if not isinstance(sup_cls, tuple):
+        sup_cls = (sup_cls,)
+    for sup in sup_cls:
+        if sup in cls.__mro__:
+            return True
+
+
+def _wired_getter(cls: Type[Wireable], locator_getter: Callable[[_RegisteredMixin], Tuple[str, str]],
+                  *field_class_args):
+    if __is_subclass(cls, (SeleneCollection, list, tuple)):  # return multiple elements if attribute is iterable
         def __getter(self: cls) -> SeleneCollection:
             f_elements = self.elements if hasattr(self, "elements") else browser.elements
-            elements = f_elements(getter(self))
+            elements = f_elements(locator_getter(self))
             elements = __convert_entity(cls, elements, *field_class_args)
             return elements
     else:
         def __getter(self: Wireable) -> SeleneElement:
             f_elements = self.element if hasattr(self, "element") else browser.element
-            element = f_elements(getter(self))
+            element = f_elements(locator_getter(self))
             element = __convert_entity(cls, element, *field_class_args)
             return element
     return __getter
 
 
-class _StrategyDict(Dict[str, GetLocator]):
+By = Callable[[str], SeleneElement]
+
+
+class _StrategyDict(Dict[str, By]):
 
     # pylint: disable=no-member
 
@@ -221,7 +181,7 @@ def _convert_locator(strategy: str, locator: str):
     return _convert
 
 
-def _to_property(field_name, field_cls, getter):
+def _to_property(field_cls: Type[_RegisteredMixin], getter: _GetterFnc):
     """Convert field to property.
 
     Setter is taken from registry: use ``register()`` to add new binding
@@ -230,17 +190,14 @@ def _to_property(field_name, field_cls, getter):
     where locator of actual element is defined in wired file
     """
 
-    def __property_setter(_cls):
-        def __inner(self: Wireable, value):
-            _set = __WIRED_CLASS_SETTERS[_cls]
-            return _set(self, value, field_name)
+    if not hasattr(field_cls, "__set_value__"):
+        raise RuntimeError(f"Can't convert {field_cls} to property: method `__set_value__` is missing")
 
-        return __inner
+    def _property_setter(instance: Wireable, value):
+        return getter(instance).__set_value__(value)
 
-    for cls in _WIRED_CLASS_ORDER:
-        if _is_subclass(field_cls, cls):
-            return property(getter, __property_setter(cls))
-    raise RuntimeError(f"Can't convert {field_name}({field_cls}) to property")
+    prop = property(getter, _property_setter)
+    return prop
 
 
 def _cached_getter(getter: _GetterFnc, field_name):
@@ -270,11 +227,11 @@ class WiredDecorator:
 
     Property ``getter`` will return SeleneElement, defined by locator in wired file
 
-    Property ``setter`` will work depending on registered setters. Default setters are:
+    Property ``setter`` will work depending on class __set__. Setters are already set for
         - SeleneElement: SeleneElement.set
         - Select: Select.select_by_value
 
-    To register new binding use ``register_setter`` function
+    To set new setter use ``register_setter`` function
 
     """
 
@@ -329,18 +286,18 @@ class WiredDecorator:
                 if hasattr(wrapped, "__wired__") and (wrapped.__wired__ == wrapped.__name__):
                     return  # already wired
                 wrapped._strategies = copy(_STRATEGIES)
-                wrapped._locators = locators  # store loaded locators inside of class
+                wrapped._locators = copy(locators)  # store loaded locators inside of class
                 annotations = wrapped.__annotations__
                 for attr in annotations:  # through all annotated attributes
                     if not hasattr(wrapped, attr):  # only not assigned attributes
                         attr_cls = annotations[attr]
                         try:
-                            locator = locators[attr]
+                            locator_getter = locators[attr]
                         except KeyError:
                             raise KeyError(f"Missing `{attr}` in file `{locator_file}`")
-                        getter = _wired_getter(attr_cls, locator)
+                        getter = _wired_getter(attr_cls, locator_getter)
                         getter = _cached_getter(getter, attr)  # Selene handles reload of elements, so we can cache it
-                        new_property = _to_property(attr, attr_cls, getter)
+                        new_property = _to_property(attr_cls, getter)
                         setattr(wrapped, attr, new_property)  # assign property to attribute
                 wrapped.__wired__ = wrapped.__name__
 
@@ -357,19 +314,8 @@ class WiredDecorator:
         return _wired
 
 
-DEFAULT_WIRED = WiredDecorator(Resources(os.getcwd(), resources_dir="resources/locators"))
-
-
 def get_custom_element(bind_obj: Wireable, field_name, field_class=SeleneElement, *field_class_args):
     """Get field with given name for wired class"""
     getter = _wired_getter(field_class, bind_obj._locators[field_name], *field_class_args)
     element = getter(bind_obj)
     return element
-
-
-def wired(locator_file):
-    """Wire decorator with resources path ``./resources/locators``
-
-    See :class:`Wired` documentation
-    """
-    return DEFAULT_WIRED(locator_file)

@@ -13,6 +13,10 @@ url = "http://pypi.outcatcher.com/simple/"
 name = "my_failover"
 url = "http://pypi2.outcatcher.com/simple/"
 
+[[tool.poetry.source]]
+name = "my_failover2"
+url = "http://pypi3.outcatcher.com/simple/"
+
 [tool.poetry.dependencies]
 python = "^3.7"
 

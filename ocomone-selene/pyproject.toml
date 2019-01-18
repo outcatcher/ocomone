@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ocomone-selene"
-version = "0.1.9.1"
+version = "0.1.10"
 description = "Library for locator wiring by Anton Kachurin"
 authors = ["Anton Kachurin <katchuring@gmail.com>"]
 license = "Apache-2.0"
@@ -12,6 +12,10 @@ url = "http://pypi.outcatcher.com/simple/"
 [[tool.poetry.source]]
 name = "my_failover"
 url = "http://pypi2.outcatcher.com/simple/"
+
+[[tool.poetry.source]]
+name = "my_failover2"
+url = "http://pypi3.outcatcher.com/simple/"
 
 [[tool.poetry.source]]
 name = "private"
@@ -28,6 +32,7 @@ ocomone = "^0.1.0"
 pyyaml = "^3.13"
 
 [tool.poetry.dev-dependencies]
+coverage = "^4.5"
 
 [build-system]
 requires = ["poetry>=0.12"]

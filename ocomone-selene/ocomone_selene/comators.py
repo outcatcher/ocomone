@@ -7,14 +7,14 @@ from typing import Type
 
 from ocomone_selene.wiring import Wireable, _STRATEGIES, _cached_getter, _convert_locator, _to_property, _wired_getter
 
-FIELD_RE = re.compile("^\s+(\w+?):\s*(\w+?)\s+#\s*(.+)$")  # e.g. `field_2: SeleneElement  # id:my-id`
+FIELD_RE = re.compile(r"^\s+(\w+?):\s*(\w+?)\s+#\s*(.+)$")  # e.g. `field_2: SeleneElement  # id:my-id`
 
 
 class CommentParsingMeta(type):
     """Metaclass for creating class with locators in comments"""
 
-    def __new__(mcs, *args, **kwargs):
-        cls = type(*args, **kwargs)
+    def __init__(cls, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         lines = inspect.getsourcelines(cls)[0]
         cls._strategies = copy(_STRATEGIES)
         for line in lines:
@@ -29,11 +29,9 @@ class CommentParsingMeta(type):
             field_class: Type[Wireable] = cls.__annotations__[field_name]
             locator = _convert_locator(*locator.split(":"))
             getter = _cached_getter(_wired_getter(field_class, locator), field_name)
-            new_property = _to_property(field_name, field_class, getter)
+            new_property = _to_property(field_class, getter)
             setattr(cls, field_name, new_property)
-        return cls
-
 
 # noinspection PyAbstractClass
-class CommentParser(Wireable, metaclass=CommentParsingMeta):
+class AbstractCommentParser(Wireable, metaclass=CommentParsingMeta):
     """Class containing fields to be parsed"""

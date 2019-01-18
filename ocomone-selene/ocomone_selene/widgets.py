@@ -1,18 +1,21 @@
 # -*- coding=utf-8 -*-
 """Base class for creating Wireable widgets"""
+from typing import Type
+
 from selene import browser
 from selene.elements import SeleneElement
 
-from .elements import ReadonlyElement, register_without_setter
-from .wiring import Wireable, get_custom_element
+from .comators import CommentParsingMeta
+from .elements import ReadonlyElement
+from .wiring import Wireable, get_custom_element, register_without_setter
 
 __all__ = ["BaseWidget"]
 
 
-class WidgetMeta(type):
+class WidgetMeta(CommentParsingMeta):
     """Auto-registering widgets"""
 
-    def __init__(cls, *args, **kwargs):
+    def __init__(cls: Type["BaseWidget"], *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         if cls.__name__ != "BaseWidget":
@@ -33,10 +36,17 @@ class BaseWidget(Wireable, metaclass=WidgetMeta):
             return getattr(self, field_name)
         return get_custom_element(self, field_name, field_type, *type_args)
 
-    @property
     def is_displayed(self) -> bool:
         """Shows that root element is visible"""
         return self.root_element.is_displayed()
+
+    def assure(self, condition, timeout=None):
+        """Wait for timeout seconds for condition to become True"""
+        return self.root_element.assure(condition, timeout)
+
+    def assure_not(self, condition, timeout=None):
+        """Wait for timeout seconds for condition to become False"""
+        return self.root_element.assure_not(condition, timeout)
 
     def element(self, ccs_selector_or_by):
         """Find element if widget"""

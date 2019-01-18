@@ -4,7 +4,9 @@
 from enum import Enum
 from typing import Union
 
+from selene.conditions import in_dom
 from selene.elements import SeleneCollection, SeleneElement
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.select import Select as _Select
 
 from .wiring import Wireable, register_setter, register_without_setter
@@ -15,6 +17,14 @@ class SeleneElementWrapper(SeleneElement):
 
     def __init__(self, _element: SeleneElement):
         super().__init__(_element._locator, _element._webdriver)  # pylint: disable=protected-access
+
+    def is_displayed(self):
+        """Check that element exists and shown"""
+        try:
+            self.assure(in_dom, timeout=0)
+            return self.is_displayed()
+        except TimeoutException:
+            return False
 
 
 class ReadonlyElement(SeleneElementWrapper):
