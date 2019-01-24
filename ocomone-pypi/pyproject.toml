@@ -7,7 +7,7 @@ license = "Apache-2.0"
 
 [[tool.poetry.source]]
 name = "my"
-url = "http://pypi.outcatcher.com/simple/"
+url = "https://pypi.outcatcher.com/simple/"
 
 [[tool.poetry.source]]
 name = "my_failover"
