@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ocomone"
-version = "0.1.2"
+version = "0.2"
 description = "Common helper library by Anton Kachurin"
 authors = ["Anton Kachurin <katchuring@gmail.com>"]
 license = "Apache-2.0"
@@ -18,7 +18,7 @@ name = "my_failover2"
 url = "http://pypi3.outcatcher.com/simple/"
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.6.1"
 
 [tool.poetry.dev-dependencies]
 
