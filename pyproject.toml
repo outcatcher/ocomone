@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ocomone"
-version = "0.2"
+version = "0.3"
 description = "Common helper library by Anton Kachurin"
 authors = ["Anton Kachurin <katchuring@gmail.com>"]
 license = "Apache-2.0"
@@ -19,6 +19,7 @@ url = "http://pypi3.outcatcher.com/simple/"
 
 [tool.poetry.dependencies]
 python = "^3.6.1"
+requests = {version = "^2.22",optional = true}
 
 [tool.poetry.dev-dependencies]
 
