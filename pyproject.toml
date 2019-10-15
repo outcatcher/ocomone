@@ -1,10 +1,11 @@
 [tool.poetry]
 name = "ocomone"
-version = "0.3.1"
+version = "0.3.3"
 description = "Common helper library by Anton Kachurin"
 authors = ["Anton Kachurin <katchuring@gmail.com>"]
 license = "Apache-2.0"
 readme = "README.md"
+repository = "https://gitlab.com/outcatcher/ocomone"
 
 [[tool.poetry.source]]
 name = "my"
