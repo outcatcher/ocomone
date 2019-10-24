@@ -1,8 +1,9 @@
 import time
+from contextlib import AbstractContextManager
 from typing import Optional
 
 
-class Timer:
+class Timer(AbstractContextManager):
     """Context-measuring timer"""
 
     start_time: Optional[float]
@@ -14,6 +15,7 @@ class Timer:
 
     def __enter__(self):
         self.start_time = time.monotonic()
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.end_time = time.monotonic()

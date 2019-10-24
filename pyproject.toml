@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ocomone"
-version = "0.4.0"
+version = "0.4.1"
 description = "Common helper library by Anton Kachurin"
 authors = ["Anton Kachurin <katchuring@gmail.com>"]
 license = "Apache-2.0"
