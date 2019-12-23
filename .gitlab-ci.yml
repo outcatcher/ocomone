@@ -10,6 +10,6 @@ wheel:
   - poetry install
   script:
   - poetry build -f wheel
-  - poetry pulish -u $PYPI_USERNAME -p $PYPI_PASSWORD
+  - poetry publish -u $PYPI_USERNAME -p $PYPI_PASSWORD
   only:
   - tags
