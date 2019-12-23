@@ -1,23 +1,11 @@
 [tool.poetry]
 name = "ocomone"
-version = "0.4.1"
+version = "0.4.2"
 description = "Common helper library by Anton Kachurin"
 authors = ["Anton Kachurin <katchuring@gmail.com>"]
 license = "Apache-2.0"
 readme = "README.md"
 repository = "https://gitlab.com/outcatcher/ocomone"
-
-[[tool.poetry.source]]
-name = "my"
-url = "https://pypi.outcatcher.com/simple/"
-
-[[tool.poetry.source]]
-name = "my_failover"
-url = "http://pypi2.outcatcher.com/simple/"
-
-[[tool.poetry.source]]
-name = "my_failover2"
-url = "http://pypi3.outcatcher.com/simple/"
 
 [tool.poetry.dependencies]
 python = "^3.6.1"

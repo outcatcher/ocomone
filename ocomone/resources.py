@@ -31,7 +31,11 @@ class Resources:
 
     def __init__(self, content_root: str, resources_dir: str = "resources"):
         """Initialize resource retrieval, normally `content_root` should be `__file__`"""
-        self.resource_root = os.path.abspath(f"{os.path.dirname(content_root)}/{resources_dir}")
+        if not os.path.exists(content_root):
+            raise FileNotFoundError(f"{content_root} does not exist")
+        if os.path.isfile(content_root):
+            content_root = os.path.dirname(content_root)
+        self.resource_root = os.path.abspath(f"{content_root}/{resources_dir}")
 
     def __getitem__(self, resource_name):
         """Return path to resource by given name. If given path is absolute, return if without change"""
