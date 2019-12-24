@@ -12,8 +12,11 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 """
-
+import logging
 import os
+
+LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel(logging.INFO)
 
 
 class Resources:
@@ -29,13 +32,17 @@ class Resources:
         ``C:\\\\Path\\to\\python_file\\resources\\my_file.txt``
     """
 
-    def __init__(self, content_root: str, resources_dir: str = "resources"):
+    def __init__(self, content_root: str, resources_dir: str = "resources", create_resource_root=False):
         """Initialize resource retrieval, normally `content_root` should be `__file__`"""
-        if not os.path.exists(content_root):
-            raise FileNotFoundError(f"{content_root} does not exist")
         if os.path.isfile(content_root):
             content_root = os.path.dirname(content_root)
         self.resource_root = os.path.abspath(f"{content_root}/{resources_dir}")
+        if create_resource_root and not os.path.exists(self.resource_root):
+            LOGGER.warning("No resource root exists at %s, directory will be created", content_root)
+            os.makedirs(self.resource_root, exist_ok=True)
+
+    def __repr__(self):
+        return f"{type(self).__name__} at {self.resource_root}"
 
     def __getitem__(self, resource_name):
         """Return path to resource by given name. If given path is absolute, return if without change"""
